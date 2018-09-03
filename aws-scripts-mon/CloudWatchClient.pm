@@ -24,6 +24,7 @@ use Digest::SHA qw(hmac_sha256_base64);
 use URI::Escape qw(uri_escape_utf8);
 use Compress::Zlib;
 use LWP 6;
+use JSON;
 
 use LWP::Simple qw($ua get);
 $ua->timeout(2); # timeout for meta-data calls
@@ -384,24 +385,11 @@ sub prepare_iam_role
   }
 
   print_out("Using IAM role <$iam_role>", $outfile) if $verbose;
-  my $id;
-  my $key;
-  my $token;
-  while ($role_content =~ /(.*)\n/g ) {
-    my $line = $1;
-    if ( $line =~ /"AccessKeyId"[ \t]*:[ \t]*"(.+)"/) {
-      $id = $1;
-      next;
-    }
-    if ( $line =~ /"SecretAccessKey"[ \t]*:[ \t]*"(.+)"/) {
-      $key = $1;
-      next;
-    }
-    if ( $line =~ /"Token"[ \t]*:[ \t]*"(.+)"/) {
-      $token = $1;
-      next;
-    }
-  }
+
+  my $content = decode_json($role_content);
+  my $id = $content->{AccessKeyId};
+  my $key = $content->{SecretAccessKey};
+  my $token = $content->{Token};
 
   my $role_statement = "from IAM role <$iam_role>";
   if (!defined($id) && !defined($key)) {
